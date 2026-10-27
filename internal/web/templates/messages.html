@@ -1,0 +1,134 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <div class="crumb">
+      <a href="/topics">频道与消息</a>
+      <svg class="icon" aria-hidden="true"><use href="#i-chev"/></svg>
+      <span class="mono">{{.Data.Topic}}</span>
+    </div>
+    <h1>{{.Data.Topic}}</h1>
+    <div class="page-sub">
+      <span>共 {{.Data.Total}} 条消息</span>
+      {{if .Data.Search}}<span class="badge badge--info">搜索：{{.Data.Search}}</span>{{end}}
+    </div>
+  </div>
+  <div class="page-actions">
+    <form method="post" action="/topics/{{.Data.Topic}}/clear" class="inline-form" data-confirm="确认清空频道「{{.Data.Topic}}」的全部缓存消息？该操作会直接删除 cache.db 中的记录，无法恢复。">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit" class="btn btn--danger">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>清空频道
+      </button>
+    </form>
+  </div>
+</header>
+
+<div class="toolbar">
+  <form method="get" action="/topics/{{.Data.Topic}}" style="display:flex;gap:8px;align-items:center;flex:1 1 320px;max-width:520px">
+    <div class="search" style="max-width:none">
+      <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+      <input type="search" name="q" value="{{.Data.Search}}" placeholder="按标题或正文搜索" aria-label="搜索消息">
+    </div>
+    <button type="submit" class="btn">搜索</button>
+    {{if .Data.Search}}<a class="btn btn--quiet" href="/topics/{{.Data.Topic}}">清除</a>{{end}}
+  </form>
+</div>
+
+<section class="card">
+  {{if .Data.Messages}}
+  <div class="table-wrap">
+    <table class="table table--stack table--msgs">
+      <thead>
+        <tr>
+          <th style="width:150px">时间</th>
+          <th>标题 / 内容</th>
+          <th style="width:64px">优先级</th>
+          <th style="width:120px">标签</th>
+          <th style="width:110px">发送者</th>
+          <th style="width:60px"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Data.Messages}}
+        <tr>
+          <td data-label="时间" class="cell-time" title="{{fmtTime .Time}}">{{fmtTime .Time}}</td>
+          <td data-label="内容">
+            {{$img := previewSrc .AttachmentURL .AttachmentType .Message .ContentType}}
+            {{/* 只有图片、没有文字的消息：桌面端图片靠左，避免整行留白 */}}
+            {{$imgOnly := and $img (not .Title) (or (not .Message) (eq .Message $img))}}
+            <div class="cell-body{{if $imgOnly}} cell-body--imgonly{{end}}">
+              <div class="cell-text">
+                {{if .Title}}<div class="msg-title">{{.Title}}</div>{{end}}
+                {{/* 正文本身就是这张图片的链接时不再重复输出地址 */}}
+                {{if and .Message (ne .Message $img)}}<div class="msg-body">{{.Message}}</div>{{end}}
+              </div>
+              {{/* DOM 顺序 = 窄屏顺序：正文 → 图片 → 附件条。
+                   桌面端用 grid 把图片提到正文右侧，附件条留在正文下方。 */}}
+              {{if $img}}
+              <button class="thumb" type="button" data-preview="{{attachSrc $img}}" aria-label="放大预览图片">
+                <img src="{{attachSrc $img}}" alt="{{if .AttachmentName}}{{.AttachmentName}}{{else}}图片消息{{end}}" loading="lazy" decoding="async">
+                <span class="thumb-zoom" aria-hidden="true"><svg class="icon"><use href="#i-zoom"/></svg></span>
+              </button>
+              {{end}}
+              {{if or .Click .AttachmentURL .AttachmentName}}
+              <div class="msg-meta">
+                {{if .Click}}<a class="small" href="{{.Click}}" target="_blank" rel="noopener">打开链接</a>{{end}}
+                {{if .AttachmentURL}}
+                <a class="file-chip" href="{{attachHref .AttachmentURL .AttachmentName}}" download="{{if .AttachmentName}}{{.AttachmentName}}{{else}}attachment{{end}}" target="_blank" rel="noopener">
+                  <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+                  <span class="file-chip-name">{{if .AttachmentName}}{{.AttachmentName}}{{else}}下载附件{{end}}</span>
+                  {{if .AttachmentSize}}<span class="file-chip-size">{{fmtSize .AttachmentSize}}</span>{{end}}
+                </a>
+                {{else if .AttachmentName}}
+                <span class="badge">{{.AttachmentName}}{{if .AttachmentSize}} · {{fmtSize .AttachmentSize}}{{end}}</span>
+                {{end}}
+              </div>
+              {{end}}
+            </div>
+          </td>
+          <td data-label="优先级">
+            {{if eq .Priority 5}}<span class="badge badge--err">5 · 最高</span>
+            {{else if eq .Priority 4}}<span class="badge badge--warn">4 · 高</span>
+            {{else if eq .Priority 3}}<span class="badge">3 · 默认</span>
+            {{else}}<span class="muted small">{{.Priority}} · 低</span>{{end}}
+          </td>
+          <td data-label="标签">
+            {{if .Tags}}<div class="badge-list">{{range .Tags}}<span class="badge badge--mono">{{.}}</span>{{end}}</div>
+            {{else}}<span class="muted small">—</span>{{end}}
+          </td>
+          <td data-label="发送者" class="small muted">{{if .Sender}}{{.Sender}}{{else if .User}}{{.User}}{{else}}—{{end}}</td>
+          <td data-label="" class="cell-ops">
+            <form method="post" action="/messages/{{.Mid}}/delete" class="inline-form" data-confirm="确认删除这条消息？删除后不可恢复。">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <input type="hidden" name="topic" value="{{$.Data.Topic}}">
+              <button type="submit" class="btn btn--sm btn--danger-ghost" aria-label="删除消息">
+                <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>删除
+              </button>
+            </form>
+          </td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <span class="pager-info">第 {{.Data.PageFrom}}–{{.Data.PageTo}} 条，共 {{.Data.Total}} 条</span>
+    {{if .Data.HasPrev}}
+    <a class="btn btn--sm" href="/topics/{{.Data.Topic}}?q={{.Data.Search}}&offset={{.Data.PrevOffset}}">
+      <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"/></svg>上一页
+    </a>
+    {{end}}
+    {{if .Data.HasNext}}
+    <a class="btn btn--sm" href="/topics/{{.Data.Topic}}?q={{.Data.Search}}&offset={{.Data.NextOffset}}">下一页</a>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty">
+    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span>
+    <div class="empty-title">没有匹配的消息</div>
+    <div class="empty-desc">{{if .Data.Search}}换个关键词试试，或清除搜索条件。{{else}}该频道在缓存时长内没有消息。{{end}}</div>
+    {{if .Data.Search}}<a class="btn btn--sm" href="/topics/{{.Data.Topic}}" style="margin-top:6px">清除搜索</a>{{end}}
+  </div>
+  {{end}}
+</section>
+{{end}}

@@ -1,0 +1,183 @@
+{{define "content"}}
+{{$fields := .Data.Fields}}
+
+<header class="page-head">
+  <div>
+    <h1>服务器配置</h1>
+    <div class="page-sub">
+      <code>{{.Data.Path}}</code>
+      <button class="icon-btn" type="button" style="width:24px;height:24px" data-copy="{{.Data.Path}}" title="复制路径" aria-label="复制配置路径">
+        <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+      </button>
+      {{if not .Data.Exists}}<span class="badge badge--warn">文件不存在</span>{{end}}
+    </div>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn--quiet" href="/">
+      <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"/></svg>概览
+    </a>
+  </div>
+</header>
+
+{{if not .Data.Exists}}
+<div class="alert alert--warn" role="alert">
+  <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+  <div class="alert-body">配置文件尚不存在。首次保存会创建新文件，请至少填写 <code>base-url</code> 与 <code>cache-file</code>。</div>
+  <button class="alert-x" type="button" aria-label="关闭提示"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+</div>
+{{end}}
+
+<section class="card">
+  <div class="card-head">
+    <h2><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg>ntfy 服务</h2>
+    <div class="card-actions">
+      {{if .Data.AllowRestart}}
+      <form method="post" action="/server/restart" class="inline-form" data-confirm="确认重启 ntfy 服务？重启期间订阅连接会短暂中断。">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button type="submit" class="btn btn--danger">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>重启服务
+        </button>
+      </form>
+      {{else}}
+      <span class="muted small">配置中已禁用重启</span>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="kv">
+    <div class="kv-row">
+      <dt>服务名</dt>
+      <dd><code>{{.Data.ServiceName}}</code></dd>
+    </div>
+    <div class="kv-row">
+      <dt>运行状态</dt>
+      <dd>
+        <span class="status">
+          {{if eq .Data.ServiceStatus "active"}}<span class="dot dot--ok"></span>运行中
+          {{else if eq .Data.ServiceStatus "unknown"}}<span class="dot dot--idle"></span>未知
+          {{else if or (eq .Data.ServiceStatus "inactive") (eq .Data.ServiceStatus "deactivating")}}<span class="dot dot--warn"></span>未运行
+          {{else}}<span class="dot dot--err"></span>{{.Data.ServiceStatus}}{{end}}
+          <span class="badge badge--mono">{{.Data.ServiceStatus}}</span>
+        </span>
+        {{if .Data.ServiceErr}}<span class="muted small">{{.Data.ServiceErr}}</span>{{end}}
+      </dd>
+    </div>
+    <div class="kv-row">
+      <dt>生效方式</dt>
+      <dd class="muted small">保存只写入文件，需重启服务后生效。</dd>
+    </div>
+  </div>
+</section>
+
+<form method="post" action="/server" id="cfgForm">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+  <div class="cfg-toolbar">
+    <div class="search">
+      <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+      <input type="search" id="cfgFilter" placeholder="筛选配置项，例如 cache、smtp、limit" aria-label="筛选配置项" autocomplete="off">
+    </div>
+    <label class="check">
+      <input type="checkbox" id="cfgOnlySet">仅显示已设置
+    </label>
+    <span class="count" id="cfgCount"></span>
+    <button type="button" class="btn btn--sm btn--quiet" id="cfgExpand" data-open="0">全部展开</button>
+    <button type="button" class="btn btn--sm btn--quiet" id="cfgClear">重置</button>
+  </div>
+
+  {{/* 配置分组统一放在 cfgList 里，空状态与分组同属一个列表流，
+       筛选无结果时才会顶出来，不会常驻在页面底部。 */}}
+  <div class="cfg-list" id="cfgList">
+  {{range $g := cfgGroups}}
+  <details class="cfg-group" {{if cfgGroupOpen $fields $g.ID}}open{{end}}>
+    <summary>
+      <svg class="icon icon-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+      <span class="cfg-group-title">{{$g.Title}}</span>
+      <span class="cfg-group-hint">{{$g.Hint}}</span>
+      <span class="cfg-group-badge"></span>
+    </summary>
+    <div class="cfg-group-body">
+      {{$gid := $g.ID}}
+      {{range $f := $fields}}
+      {{if eq (cfgGroup $f.Key) $gid}}
+      <div class="cfg-row" data-set="{{if $f.Set}}1{{else}}0{{end}}" data-search="{{$f.Key}} {{$f.Description}}">
+        <div class="cfg-key">
+          <code>{{$f.Key}}</code>
+          {{if $f.Protected}}<svg class="icon" aria-label="受保护，留空保持原值" title="受保护：留空时保持原值"><use href="#i-lock"/></svg>{{end}}
+          {{if not $f.Set}}<span class="dot dot--idle" title="未设置"></span>{{end}}
+        </div>
+        <div class="cfg-control">
+          {{if eq $f.Kind "bool"}}
+            <select name="f_{{$f.Key}}" aria-label="{{$f.Key}}">
+              <option value="" {{if eq $f.Value ""}}selected{{end}}>未设置</option>
+              <option value="true" {{if eq $f.Value "true"}}selected{{end}}>true</option>
+              <option value="false" {{if eq $f.Value "false"}}selected{{end}}>false</option>
+            </select>
+          {{else if eq $f.Kind "secret"}}
+            <input type="password" name="f_{{$f.Key}}" value="" placeholder="{{if $f.Set}}已设置，留空保持不变{{else}}未设置{{end}}" autocomplete="new-password" aria-label="{{$f.Key}}">
+          {{else}}
+            <input type="text" name="f_{{$f.Key}}" value="{{$f.Value}}" placeholder="未设置" aria-label="{{$f.Key}}">
+          {{end}}
+          <p class="cfg-hint">{{$f.Description}}</p>
+        </div>
+      </div>
+      {{end}}
+      {{end}}
+    </div>
+  </details>
+  {{end}}
+
+  <div class="empty empty--compact" id="cfgNone" hidden>
+    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></span>
+    <div class="empty-title">没有匹配的配置项</div>
+    <div class="empty-desc">换个关键词，或点击「重置」显示全部配置。</div>
+  </div>
+  </div>
+
+  {{/* 只读面板跟在分组列表之后、保存栏之前，随内容一起滚动，
+       不会再被吸底栏压住。 */}}
+  {{if .Data.Unknown}}
+  <details class="panel">
+    <summary>
+      <svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>
+      其他配置项（只读，{{len .Data.Unknown}} 项）
+      <svg class="icon icon-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+    </summary>
+    <div class="panel-body">
+      <p class="muted small" style="margin-bottom:10px">以下键不在仪表盘的可编辑白名单中，需在原文件里手动修改。</p>
+      <div class="table-wrap" style="margin:0;padding:0">
+        <table class="table">
+          <thead><tr><th>键</th><th>值</th></tr></thead>
+          <tbody>
+          {{range .Data.Unknown}}
+            <tr><td style="width:220px"><code>{{.Key}}</code></td><td><code>{{.Value}}</code></td></tr>
+          {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+  {{end}}
+
+  <details class="panel">
+    <summary>
+      <svg class="icon" aria-hidden="true"><use href="#i-database"/></svg>
+      原始文件
+      <button class="icon-btn" type="button" style="width:24px;height:24px" data-copy="{{.Data.Raw}}" title="复制全文" aria-label="复制原始文件">
+        <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+      </button>
+      <svg class="icon icon-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+    </summary>
+    <div class="panel-body">
+      <pre class="raw">{{if .Data.Raw}}{{.Data.Raw}}{{else}}（文件为空或不存在）{{end}}</pre>
+    </div>
+  </details>
+
+  <div class="savebar">
+    <button type="submit" class="btn btn--primary">
+      <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>保存配置
+    </button>
+    <span class="savebar-note">留空的字段会被从文件中删除；保存前自动备份原文件。</span>
+  </div>
+</form>
+{{end}}

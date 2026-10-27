@@ -1,0 +1,22 @@
+# 构建产物
+bin/
+dist/
+*.exe
+
+# 本地配置（含真实密码哈希，勿提交）
+configs/dashboard.yml
+
+# 测试与覆盖率
+*.out
+coverage.*
+
+# 编辑器/系统文件
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# 临时文件
+tmp/
+*.bak
+*.tmp

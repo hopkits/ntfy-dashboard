@@ -1,0 +1,77 @@
+# ntfy-dashboard 配置文件示例
+#
+# 放置位置：/etc/ntfy/dashboard.yml
+# 权限建议：chmod 600 /etc/ntfy/dashboard.yml（文件包含密码哈希与会话密钥）
+#
+# 本文件只控制仪表盘自身，不会修改 ntfy server 的配置。
+
+# 仪表盘 HTTP 监听地址。
+# ":8090" 表示监听本机所有网卡（IPv4 + IPv6）；也可写 "0.0.0.0:8090" 仅监听 IPv4。
+# 若只允许本机访问，改为 "127.0.0.1:8090"。
+# 安全提醒：对外监听时务必配合防火墙限制来源，或通过 Nginx/Caddy 反向代理启用 HTTPS，
+# 并把下方 session.secure 设为 true。
+listen: ":8090"
+
+# 仪表盘对外基础 URL（用于生成链接；可直接留空）。
+# 对外访问时建议填写实际地址，例如 "https://ntfy-admin.example.com"。
+base-url: ""
+
+auth:
+  # 管理员登录用户名。
+  username: "admin"
+
+  # 管理员密码的 bcrypt 哈希。生成方式：
+  #   ntfy-dashboard -hash-password
+  # 留空时，启动时从环境变量 NTFY_DASH_PASSWORD 读取明文并即时哈希。
+  password-hash: ""
+
+  # 会话签名密钥（可选）。生成方式：
+  #   ntfy-dashboard -gen-secret
+  # 留空时由密码哈希派生，修改密码会使所有既有会话失效。
+  secret: ""
+
+session:
+  # 会话有效期。
+  ttl: 12h
+  # 会话 cookie 名称。
+  cookie-name: "ntfydash_session"
+  # 是否仅通过 HTTPS 发送 cookie。启用 TLS 后建议设为 true。
+  secure: false
+
+ntfy:
+  # ntfy server 对外基础 URL，用于页面上的跳转链接，可留空。
+  server-url: "https://ntfy.example.com"
+
+  # ntfy 可执行文件路径。若已加入 PATH 可写 "ntfy"。
+  cli-path: "/usr/bin/ntfy"
+
+  # ntfy 数据目录（缓存与用户数据库所在目录）。
+  # Debian 官方包通常为 /var/lib/ntfy；使用 cache-file/auth-file 自定义路径时以下方两项为准。
+  data-dir: "/var/lib/ntfy"
+
+  # 消息缓存数据库路径（可选显式覆盖）。
+  # 默认留空：以 server.yml 的 cache-file 为准。
+  # 若 server.yml 也未设置 cache-file，则表示 ntfy 使用内存缓存、没有持久化消息，
+  # 界面会提示「未配置消息缓存」，不会猜测默认路径。
+  cache-db: ""
+
+  # 用户/访问控制数据库路径。留空则回退为 <data-dir>/user.db。
+  user-db: ""
+
+  # ntfy server 配置文件路径（仪表盘的「服务器配置」页编辑此文件）。
+  server-config-file: "/etc/ntfy/server.yml"
+
+  # 调用 ntfy CLI 的超时时间。
+  cli-timeout: 30s
+
+  # ntfy 的 systemd 服务名（用于状态查询与重启）。若使用 Docker 等方式部署可关闭重启权限。
+  service-name: "ntfy"
+
+  # systemctl 可执行文件路径（通常无需修改）。
+  systemctl-path: "systemctl"
+
+  # 是否允许从仪表盘重启 ntfy 服务。设为 false 后只能查看状态、不能重启。
+  allow-restart: true
+
+  # 重启服务与查询状态的超时时间。
+  restart-timeout: 30s

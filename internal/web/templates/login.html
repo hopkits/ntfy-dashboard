@@ -1,0 +1,33 @@
+{{define "content"}}
+<form class="auth-card" method="post" action="/login">
+  <div class="auth-brand">
+    <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-msg"/></svg></span>
+    <span class="brand-text">
+      <span class="brand-name">{{appName}}</span>
+      <span class="brand-sub">
+        <span>{{appProduct}}</span>
+        <span class="brand-ver">{{appVersion}}</span>
+      </span>
+    </span>
+  </div>
+
+  <h1>登录管理控制台</h1>
+  <p class="auth-sub">管理 ntfy 的配置、用户与消息缓存。</p>
+
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+  <label class="field">
+    <span>用户名</span>
+    <input type="text" name="username" autocomplete="username" required autofocus>
+  </label>
+
+  <label class="field">
+    <span>密码</span>
+    <input type="password" name="password" autocomplete="current-password" required>
+  </label>
+
+  <button type="submit" class="btn btn--primary btn--block">登录</button>
+
+  <p class="auth-foot">本控制台仅限授权管理员使用</p>
+</form>
+{{end}}

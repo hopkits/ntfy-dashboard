@@ -1,0 +1,70 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <h1>频道与消息</h1>
+    {{if .Data.DBOK}}
+    <div class="page-sub">
+      <span class="stat-strip" style="padding:0">
+        <div><span class="k">频道</span><span class="v">{{.Data.Stats.TopicCount}}</span></div>
+        <div><span class="k">消息</span><span class="v">{{.Data.Stats.MessageCount}}</span></div>
+        <div><span class="k">缓存</span><span class="v">{{fmtSize .Data.Stats.FileSize}}</span></div>
+      </span>
+    </div>
+    {{end}}
+  </div>
+</header>
+
+{{if not .Data.DBOK}}
+<div class="alert alert--warn" role="alert">
+  <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+  <div class="alert-body">消息缓存不可用：{{.Data.DBErr}}</div>
+  <button class="alert-x" type="button" aria-label="关闭提示"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+</div>
+{{end}}
+
+<section class="card">
+  <div class="card-head">
+    <h2><svg class="icon" aria-hidden="true"><use href="#i-hash"/></svg>频道列表</h2>
+    <div class="card-actions">
+      <span class="card-note">共 {{len .Data.Topics}} 个频道</span>
+    </div>
+  </div>
+
+  {{if .Data.Topics}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead>
+        <tr>
+          <th>频道</th>
+          <th style="width:88px">消息</th>
+          <th style="width:150px">最后活动</th>
+          <th>最新消息</th>
+          <th style="width:72px"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Data.Topics}}
+        <tr>
+          <td data-label="频道" class="cell-strong">
+            <a class="mono" href="/topics/{{.Name}}">{{.Name}}</a>
+          </td>
+          <td data-label="消息" class="cell-num">{{.Count}}</td>
+          <td data-label="最后活动" class="cell-time" title="{{fmtTime .Last}}">{{fmtAgo .Last}}</td>
+          <td data-label="最新消息" class="cell-clip">{{if .LastMsg}}{{.LastMsg}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td data-label="" class="cell-ops">
+            <a class="btn btn--sm" href="/topics/{{.Name}}">查看</a>
+          </td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty">
+    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-hash"/></svg></span>
+    <div class="empty-title">{{if .Data.DBOK}}暂无频道{{else}}缓存不可用{{end}}</div>
+    <div class="empty-desc">{{if .Data.DBOK}}发布到任意频道的消息会出现在这里，缓存时长内有效。{{else}}请检查 server.yml 的 cache-file 配置与文件权限。{{end}}</div>
+  </div>
+  {{end}}
+</section>
+{{end}}

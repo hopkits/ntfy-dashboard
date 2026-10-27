@@ -1,0 +1,12 @@
+{{define "content"}}
+<div class="card error-card">
+  <div class="error-wrap">
+    <div class="error-code">{{.Data.Code}}</div>
+    <div class="error-msg">{{.Data.Message}}</div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <a class="btn" href="/">返回概览</a>
+      <button class="btn btn--quiet" type="button" data-back>上一页</button>
+    </div>
+  </div>
+</div>
+{{end}}

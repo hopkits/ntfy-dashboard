@@ -1,0 +1,44 @@
+[Unit]
+Description=ntfy dashboard (web admin console for ntfy server)
+Documentation=https://docs.ntfy.sh/
+After=network-online.target ntfy.service
+Wants=network-online.target
+# 若希望仪表盘随 ntfy 一同启动，可取消下一行注释（Requires 会在 ntfy 停止时一并停止仪表盘）
+# Requires=ntfy.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ntfy-dashboard -config /etc/ntfy/dashboard.yml
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=15s
+
+# 仪表盘需要：
+#   1) 读写 /etc/ntfy/server.yml（保存配置，含临时文件与备份）
+#   2) 读取 /var/lib/ntfy 与 /var/cache/ntfy 中的 user.db / cache.db
+#   3) 执行 ntfy CLI 管理用户
+# 默认以 root 运行以便访问上述资源；也可改用专用用户并授予对应目录权限（见 README）。
+User=root
+Group=root
+
+# 基础加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+# 仅允许写入必要目录（前缀 "-" 表示目录不存在时不报错）
+ReadWritePaths=/etc/ntfy -/var/lib/ntfy -/var/cache/ntfy
+ReadOnlyPaths=/usr/bin /usr/local/bin
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

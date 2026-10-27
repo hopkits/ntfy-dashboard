@@ -1,0 +1,193 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <h1>用户与权限</h1>
+    <div class="page-sub">
+      <span>共 {{len .Data.Users}} 个账号</span>
+      <span class="badge">ntfy auth 数据库</span>
+    </div>
+  </div>
+</header>
+
+<section class="card">
+  <div class="card-head">
+    <h2><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>用户列表</h2>
+    <div class="card-actions">
+      <a class="btn btn--sm" href="#add-user">
+        <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>添加用户
+      </a>
+    </div>
+  </div>
+
+  {{if .Data.Users}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead>
+        <tr>
+          <th style="width:180px">用户名</th>
+          <th style="width:140px">角色</th>
+          <th>访问权限</th>
+          <th style="width:230px"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Data.Users}}
+        <tr>
+          <td data-label="用户" class="cell-strong">
+            <code>{{.Name}}</code>
+            {{if .Provisioned}}<span class="badge" title="定义在 server.yml，无法通过 CLI 修改">文件内置</span>{{end}}
+          </td>
+          <td data-label="角色">
+            {{if .Provisioned}}
+              <span class="badge badge--brand">{{.Role}}</span>
+            {{else}}
+              <form method="post" action="/users/role" class="inline-form">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <input type="hidden" name="username" value="{{.Name}}">
+                <select name="role" aria-label="角色" style="width:96px;height:28px;font-size:12.5px">
+                  <option value="user" {{if eq (.Role) "user"}}selected{{end}}>user</option>
+                  <option value="admin" {{if eq (.Role) "admin"}}selected{{end}}>admin</option>
+                </select>
+                <button type="submit" class="btn btn--sm">保存</button>
+              </form>
+            {{end}}
+          </td>
+          <td data-label="权限">
+            {{if .Grants}}
+              <div class="badge-list">
+                {{range .Grants}}
+                <span class="badge {{if eq (.Permission) "deny"}}badge--err{{else if eq (.Permission) "read-only"}}badge--info{{else if eq (.Permission) "write-only"}}badge--warn{{else}}badge--ok{{end}}">
+                  {{.Permission}} <code style="background:transparent;padding:0;color:inherit;font-size:11px">{{.TopicPattern}}</code>
+                </span>
+                {{end}}
+              </div>
+            {{else}}
+              <span class="muted small">无主题级权限</span>
+            {{end}}
+          </td>
+          <td data-label="" class="cell-ops">
+            {{if not .Provisioned}}
+            <div class="row-actions">
+              <form method="post" action="/users/password" class="inline-form" data-confirm="确认为用户「{{.Name}}」设置新密码？">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <input type="hidden" name="username" value="{{.Name}}">
+                <input type="password" name="password" placeholder="新密码" required autocomplete="new-password" class="mini" aria-label="新密码">
+                <button type="submit" class="btn btn--sm">改密码</button>
+              </form>
+              <form method="post" action="/users/remove" class="inline-form" data-confirm="确认删除用户「{{.Name}}」？该操作不可恢复。">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <input type="hidden" name="username" value="{{.Name}}">
+                <button type="submit" class="btn btn--sm btn--danger-ghost" aria-label="删除用户 {{.Name}}">
+                  <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                </button>
+              </form>
+            </div>
+            {{else}}
+            <span class="muted small">由 server.yml 管理</span>
+            {{end}}
+          </td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty">
+    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg></span>
+    <div class="empty-title">还没有用户</div>
+    <div class="empty-desc">在下方添加第一个账号，或检查 <code>cli-path</code> 配置是否正确。</div>
+  </div>
+  {{end}}
+</section>
+
+<div class="grid grid--2">
+  <section class="card" id="add-user">
+    <div class="card-head">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>添加用户</h2>
+    </div>
+    <form method="post" action="/users/add" class="form-grid">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="field">
+        <span>用户名</span>
+        <input type="text" name="username" required autocomplete="off" placeholder="字母、数字、下划线">
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input type="password" name="password" required autocomplete="new-password" placeholder="至少 8 位">
+      </label>
+      <label class="field">
+        <span>角色</span>
+        <select name="role">
+          <option value="user">user</option>
+          <option value="admin">admin</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn--primary">添加</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>访问规则</h2>
+    </div>
+    <form method="post" action="/users/access" class="form-grid">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="field">
+        <span>用户</span>
+        <select name="username">
+          <option value="everyone">everyone（匿名）</option>
+          {{range .Data.Users}}<option value="{{.Name}}">{{.Name}}</option>{{end}}
+        </select>
+      </label>
+      <label class="field">
+        <span>主题</span>
+        <input type="text" name="topic" placeholder="mytopic 或 up*" required>
+      </label>
+      <label class="field">
+        <span>权限</span>
+        <select name="permission">
+          <option value="read-write">read-write</option>
+          <option value="read-only">read-only</option>
+          <option value="write-only">write-only</option>
+          <option value="deny">deny</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn--primary">应用</button>
+    </form>
+
+    <hr class="divider">
+
+    <form method="post" action="/users/access/reset" class="form-row" data-confirm="确认重置所选用户的全部访问规则？">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label class="field">
+        <span>重置用户</span>
+        <select name="username">
+          <option value="everyone">everyone（匿名）</option>
+          {{range .Data.Users}}<option value="{{.Name}}">{{.Name}}</option>{{end}}
+        </select>
+      </label>
+      <label class="field">
+        <span>限定主题（可选）</span>
+        <input type="text" name="topic" placeholder="留空则清除全部规则">
+      </label>
+      <button type="submit" class="btn btn--danger">重置</button>
+    </form>
+  </section>
+</div>
+
+{{if .Data.AclRaw}}
+<details class="panel">
+  <summary>
+    <svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>
+    完整访问控制列表
+    <button class="icon-btn" type="button" style="width:24px;height:24px" data-copy="{{.Data.AclRaw}}" title="复制" aria-label="复制访问控制列表">
+      <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+    </button>
+    <svg class="icon icon-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+  </summary>
+  <div class="panel-body">
+    <pre class="raw">{{.Data.AclRaw}}</pre>
+  </div>
+</details>
+{{end}}
+{{end}}

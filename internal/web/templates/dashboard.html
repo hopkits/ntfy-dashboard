@@ -1,0 +1,170 @@
+{{define "content"}}
+<header class="page-head">
+  <div>
+    <h1>概览</h1>
+    {{if or .Data.ServerURL .Data.ListenHTTP .Data.ListenHTTPS}}
+    <div class="page-sub">
+      {{if .Data.ServerURL}}
+      <a class="ext-link" href="{{.Data.ServerURL}}" target="_blank" rel="noopener" title="在新窗口打开 ntfy 服务">
+        {{.Data.ServerURL}}
+        <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>
+      </a>
+      {{end}}
+      {{if .Data.ListenHTTP}}<span class="badge badge--mono" title="HTTP 监听地址">HTTP {{.Data.ListenHTTP}}</span>{{end}}
+      {{if .Data.ListenHTTPS}}<span class="badge badge--mono" title="HTTPS 监听地址">HTTPS {{.Data.ListenHTTPS}}</span>{{end}}
+    </div>
+    {{end}}
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="/topics">
+      <svg class="icon" aria-hidden="true"><use href="#i-hash"/></svg>频道与消息
+    </a>
+    <a class="btn btn--primary" href="/server">
+      <svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg>服务器配置
+    </a>
+  </div>
+</header>
+
+{{if not .Data.DBOK}}
+<div class="alert alert--warn" role="alert">
+  <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+  <div class="alert-body">{{.Data.DBErr}} <a href="/server">前往配置</a></div>
+  <button class="alert-x" type="button" aria-label="关闭提示"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+</div>
+{{end}}
+{{if not .Data.CliOK}}
+<div class="alert alert--warn" role="alert">
+  <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+  <div class="alert-body">ntfy CLI 调用失败：{{.Data.CliErr}} <a href="/server">前往配置</a></div>
+  <button class="alert-x" type="button" aria-label="关闭提示"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+</div>
+{{end}}
+
+<div class="grid grid--4">
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="#i-hash"/></svg></span>
+      <span class="stat-label">消息总数</span>
+    </div>
+    <div class="stat-value">{{.Data.Stats.MessageCount}}</div>
+  </div>
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"/></svg></span>
+      <span class="stat-label">频道数</span>
+    </div>
+    <div class="stat-value">{{.Data.Stats.TopicCount}}</div>
+  </div>
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon stat-icon--neutral"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg></span>
+      <span class="stat-label">用户数</span>
+    </div>
+    <div class="stat-value">{{if .Data.CliOK}}{{.Data.UserCount}}{{else}}<span class="muted">—</span>{{end}}</div>
+    {{if not .Data.CliOK}}<div class="stat-foot">CLI 不可用</div>{{end}}
+  </div>
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon stat-icon--neutral"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span>
+      <span class="stat-label">缓存占用</span>
+    </div>
+    <div class="stat-value">{{fmtSize .Data.Stats.FileSize}}</div>
+  </div>
+</div>
+
+<div class="grid grid--main-side">
+  <section class="card">
+    <div class="card-head">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg>服务器信息</h2>
+      <div class="card-actions"><a class="btn btn--sm" href="/server">编辑配置</a></div>
+    </div>
+
+    <dl class="kv">
+      <div class="kv-row">
+        <dt>server.yml</dt>
+        <dd>
+          <code>{{.Data.ServerConfigPath}}</code>
+          {{if not .Data.ConfigExists}}<span class="badge badge--warn">不存在</span>{{end}}
+          <button class="icon-btn" type="button" style="width:24px;height:24px" data-copy="{{.Data.ServerConfigPath}}" title="复制路径" aria-label="复制配置路径">
+            <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+          </button>
+        </dd>
+      </div>
+      <div class="kv-row">
+        <dt>cache.db</dt>
+        <dd>
+          {{if .Data.CacheDBPath}}
+          <code>{{.Data.CacheDBPath}}</code>
+          <button class="icon-btn" type="button" style="width:24px;height:24px" data-copy="{{.Data.CacheDBPath}}" title="复制路径" aria-label="复制缓存路径">
+            <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+          </button>
+          {{else}}
+          <span class="badge badge--warn">未配置</span>
+          <span class="muted small">server.yml 未设置 <code>cache-file</code></span>
+          {{end}}
+        </dd>
+      </div>
+      {{if .Data.ListenHTTP}}
+      <div class="kv-row">
+        <dt>HTTP 监听</dt>
+        <dd><code>{{.Data.ListenHTTP}}</code></dd>
+      </div>
+      {{end}}
+      {{if .Data.ListenHTTPS}}
+      <div class="kv-row">
+        <dt>HTTPS 监听</dt>
+        <dd><code>{{.Data.ListenHTTPS}}</code></dd>
+      </div>
+      {{end}}
+      {{if and (not .Data.ListenHTTP) (not .Data.ListenHTTPS)}}
+      <div class="kv-row">
+        <dt>监听地址</dt>
+        <dd><span class="muted">未设置 <code>listen-http</code></span></dd>
+      </div>
+      {{end}}
+      <div class="kv-row">
+        <dt>外部地址</dt>
+        <dd>
+          {{if .Data.ServerURL}}
+          <a href="{{.Data.ServerURL}}" target="_blank" rel="noopener">{{.Data.ServerURL}}</a>
+          {{else}}
+          <span class="muted">未设置 <code>server-url</code></span>
+          {{end}}
+        </dd>
+      </div>
+      <div class="kv-row">
+        <dt>ntfy 版本</dt>
+        <dd>{{if .Data.NtfyVersion}}<code>{{.Data.NtfyVersion}}</code>{{else}}<span class="muted">未知</span>{{end}}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>最近消息</h2>
+      {{if .Data.Recent}}<div class="card-actions"><a class="btn btn--sm btn--quiet" href="/topics">全部</a></div>{{end}}
+    </div>
+
+    {{if .Data.Recent}}
+    <ul class="msg-list">
+      {{range .Data.Recent}}
+      <li class="msg-item">
+        <div class="msg-meta">
+          <a class="badge badge--brand badge--mono" href="/topics/{{.Topic}}">{{.Topic}}</a>
+          <span class="msg-time" title="{{fmtTime .Time}}">{{fmtAgo .Time}}</span>
+        </div>
+        {{if .Title}}<div class="msg-title">{{.Title}}</div>{{end}}
+        {{if .Message}}<div class="msg-text">{{.Message}}</div>{{end}}
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    <div class="empty">
+      <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span>
+      <div class="empty-title">{{if .Data.DBOK}}还没有缓存消息{{else}}缓存不可用{{end}}</div>
+      <div class="empty-desc">{{if .Data.DBOK}}消息发布后会在此显示，最多展示最近 8 条。{{else}}请检查 server.yml 的 cache-file 配置。{{end}}</div>
+    </div>
+    {{end}}
+  </section>
+</div>
+{{end}}

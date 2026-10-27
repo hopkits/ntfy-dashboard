@@ -145,7 +145,7 @@ ntfy 是一个轻量级推送通知服务。自托管部署后，其管理能力
 | 频道/消息 | 直接读 SQLite | ntfy 没有查询缓存消息的 CLI/HTTP 接口 |
 | server.yml | 直接读写文本 | 需要保留注释、自定义键与格式 |
 
-### 4.2 ntfy CLI 的 `--config` 位置（v1.2.0 修复）
+### 4.2 ntfy CLI 的 `--config` 位置
 
 `--config` 挂在 `user` / `access` **子命令**上，不是全局 flag：
 
@@ -170,7 +170,7 @@ user * (role: anonymous, tier: none)
 
 它不是可管理账号。`User.IsAnonymous()` 统一判定；用户管理页渲染前过滤，概览页的「用户数」也只统计非匿名账号，避免出现「实际 2 个用户、概览显示 3」的偏差。完整 ACL 原文中仍会显示。
 
-### 4.4 保存配置的「空值即删除」语义（v1.3.0）
+### 4.4 保存配置的「空值即删除」语义
 
 旧实现把表单中所有字段（含未设置的空值）写回文件，产生：
 
@@ -189,7 +189,7 @@ ntfy 会把空值当作有效配置，导致启动失败。现行规则：
 
 > 前端布尔字段提供「未设置」选项（值为空字符串），避免未设置的布尔项被强制写成 `false`。
 
-### 4.5 `auth-users` 必须是 YAML 列表（v1.3.2 修复）
+### 4.5 `auth-users` 必须是 YAML 列表
 
 ntfy 的 `server.yml` 中 `auth-users` 期望 `[]interface{}`。写成字符串会报：
 
@@ -517,7 +517,7 @@ gofmt -l .
 
 | 包 | 覆盖内容 |
 | --- | --- |
-| `internal/ntfycli` | `user list` 输出解析（含真实 v2.34 输出、匿名用户）、`--config` 参数插入位置、权限/角色校验 |
+| `internal/ntfycli` | `user list` 输出解析（含真实ntfy v2.34.0 输出、匿名用户）、`--config` 参数插入位置、权限/角色校验 |
 | `internal/settings` | 读取、更新、注释与自定义键保留、空值删除、`auth-users` 受保护、格式校验、列表规范化、序列解析 |
 | `internal/ntfydb` | 话题/消息查询与排序、搜索、标签解析、删除/清空与 stats 同步、缺失文件处理 |
 | `internal/systemd` | 服务名校验、状态查询、重启成功/失败、inactive 不算错误 |
@@ -583,25 +583,6 @@ sudo systemctl restart ntfy-dashboard
 - systemd 单元
 - 当前二进制与版本号
 
-### 13.5 故障排查
-
-| 现象 | 原因与处理 |
-| --- | --- |
-| `flag provided but not defined: -config` | 二进制过旧（< v1.2.0）；升级后重启 |
-| `Mismatched type for flag 'auth-users'` | 配置被写成字符串；升级到 v1.3.2 后在配置页保存一次即可规范为列表 |
-| ntfy 启动失败，配置含空值键 | 旧版保存产生；升级 v1.3.0+ 后保存一次会清理，或从 `.bak` 恢复 |
-| 概览提示「未配置消息缓存」 | `server.yml` 未设置 `cache-file`（ntfy 使用内存缓存，属正常状态）；如需持久化消息，请在 `server.yml` 配置 `cache-file` 后重启 ntfy |
-| 概览提示无法读取缓存 | 检查 `cache-file` 路径、文件存在性、运行用户权限；PostgreSQL 模式下属预期 |
-| 用户页提示无法调用 CLI | 检查 `cli-path`、可执行权限；`ntfy --version` 验证 |
-| 用户页权限错误 | 运行用户需可读写 `auth-file`；provisioned 用户不能改密码 |
-| 保存报 YAML 不合法 | 字段类型不匹配（布尔填了非 true/false 等） |
-| 保存成功但未生效 | 需点击「重启 ntfy 服务」或 `systemctl restart ntfy` |
-| 登录后立即失效 | 修改过 `password-hash` 且未固定 `auth.secret`；所有旧会话失效属预期 |
-| 重启报 `Unit ntfy.service not found` | 服务名错误或 ntfy 在 Docker 中；改 `service-name` 或设 `allow-restart: false` |
-| 重启报 D-Bus/沙箱错误 | 单元增加 `ReadWritePaths=/run`，或关闭重启功能由外部执行 |
-| 403 表单校验失败 | 页面过期或 CSRF cookie 丢失；刷新重试 |
-| 监听告警「非回环地址」 | 正常提示；启用 HTTPS 并设 `session.secure: true`，或限制来源 |
-
 ---
 
 ## 14. 已知限制与改进建议
@@ -636,7 +617,7 @@ sudo systemctl restart ntfy-dashboard
 ### 15.1 代码与产物
 
 - [x] 源码（见目录结构）
-- [x] `bin/ntfy-dashboard` v1.3.4（Linux/amd64）
+- [x] `bin/ntfy-dashboard` (Linux/amd64）
 - [x] 配置模板与 systemd 单元
 - [x] 单元测试 25 项
 - [x] `README.md` 部署文档
@@ -685,18 +666,6 @@ git commit -m "chore: import ntfy-dashboard v1.3.4"
 ## 16. 附录
 
 ### 16.1 版本历史
-
-| 版本 | 主要变更 |
-| --- | --- |
-| 1.0.0 | 首个可用版本：登录、概览、配置编辑、用户管理、频道/消息、systemd 单元 |
-| 1.0.1 | 默认监听所有网卡；非回环监听且未启用 Secure cookie 时告警 |
-| 1.1.0 | 服务状态展示；独立重启按钮；`allow-restart` 开关 |
-| 1.2.0 | 修复 ntfy CLI `--config` 位置；过滤匿名伪用户；真实 ntfy v2.34 验证 |
-| 1.3.0 | 保存只写有值项、留空删除；保存与重启拆分为两个按钮；页面文案更新 |
-| 1.3.1 | `auth-users` 受保护、格式校验（中间版本） |
-| 1.3.2 | `auth-users` 按 YAML 列表写回并自动规范化 |
-| 1.3.3 | 消息缓存路径只认 `server.yml` 的 `cache-file`；未配置时明确提示，不再回退默认路径 |
-| 1.3.4 | 概览「用户数」排除匿名伪用户，与用户管理页及实际账号数一致（当前版本） |
 
 ### 16.2 常用 ntfy 命令参考
 
